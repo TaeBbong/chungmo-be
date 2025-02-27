@@ -1,0 +1,6 @@
+*.local
+venv/
+__pycache__
+
+fromitome-firebase-adminsdk-hncvs-1d9b4ed8fa.json
+openai_api_key
