@@ -11,22 +11,16 @@ from bs4 import BeautifulSoup
 from typing import Set
 
 
-# try:
-#     cred = credentials.Certificate(".\\fromitome-firebase-adminsdk-hncvs-1d9b4ed8fa.json")
-#     initialize_app(cred)
-# except:
-#     initialize_app()
-
-
 @https_fn.on_request(secrets=["OPENAI_API_KEY"])
 def test_handler(req: https_fn.Request) -> https_fn.Response:
-    sample_data = {
+    """테스트 데이터(JSON str)를 반환하는 API 핸들러"""
+    sample_data = '''{
         "thumbnail": "https://lh3.googleusercontent.com/0R0eXLYFAdshrgHOqXSujoVHcD7z76dBJJzpci2DLJ8cZxUtTWnYuNrFDGX8LNC8VVrpRLoCEf0_RVT4BTpBeY5GgoaRg6OHeP4ZfeWlYA=s1200",
         "groom": "차땡땡",
         "bride": "한땡땡",
         "datetime": "2025-04-11T11:00:00",
         "location": "JK아트컨벤션 4층 아트리움홀, 서울 영등포구 문래동3가 55-16"
-    }
+    }'''
 
     if req.method == "OPTIONS":
         headers = {
@@ -42,6 +36,7 @@ def test_handler(req: https_fn.Request) -> https_fn.Response:
 
 @https_fn.on_request(secrets=["OPENAI_API_KEY"])
 def parse_voucher_handler(req: https_fn.Request) -> https_fn.Response:
+    """POST로 link 데이터를 전달받아 html 파싱, gpt를 통해 적절한 데이터 추출 및 JSON(str)을 반환하는 API 핸들러"""
     if req.method == "OPTIONS":
         headers = {
             "Access-Control-Allow-Origin": "*",
@@ -67,9 +62,9 @@ def parse_voucher_handler(req: https_fn.Request) -> https_fn.Response:
 
         voucher = data.get("link")
         
-        if voucher.startswith("http"):
+        if not voucher.startswith("http"):
             return https_fn.Response(
-                "Invalid 'voucher' format. Expected a link starts with http or https.", 
+                f"Invalid 'voucher' format. Expected a link starts with http or https.\n{voucher}", 
                 status=400,
                 headers=headers
             )
@@ -77,22 +72,18 @@ def parse_voucher_handler(req: https_fn.Request) -> https_fn.Response:
         parsed_result = extract_content_with_images(voucher)
         
         query = parsed_result + "\n\n"
-        query += '''Within above strings, parse following required wedding data into JSON format.\n
+        query += '''
+        Extract the required wedding data from the given text and return it in pure JSON format, without any additional text. Ensure that the output follows this exact JSON structure:
+
         {
             "thumbnail": "",
-            "groom": "",
-            "bride": "",
-            "datetime": "",
+            "groom": "", 
+            "bride": "", 
+            "datetime": "", // ex: 2025-04-26T14:00:00
             "location": ""
         }
-        Example:
-        {
-            "thumbnail": "https://lh3.googleusercontent.com/0R0eXLYFAdshrgHOqXSujoVHcD7z76dBJJzpci2DLJ8cZxUtTWnYuNrFDGX8LNC8VVrpRLoCEf0_RVT4BTpBeY5GgoaRg6OHeP4ZfeWlYA=s1200",
-            "groom": "차승준",
-            "bride": "한서희",
-            "datetime": "2025-04-05T11:00:00",
-            "location": "JK아트컨벤션 4층 아트리움홀, 서울 영등포구 문래동3가 55-16"
-        }
+
+        Do not include any explanations, comments, or extra characters—only return valid JSON.
          '''
         client = OpenAI(api_key=OPENAI_API_KEY)
         model = "gpt-4o-mini"
@@ -117,7 +108,7 @@ def parse_voucher_handler(req: https_fn.Request) -> https_fn.Response:
 
     except Exception as e:
         return https_fn.Response(
-            json.dumps({"error": str(e)}), status=500, mimetype="application/json", headers=headers
+            json.dumps({"error": str(e) + str(req.get_json())}), status=500, mimetype="application/json", headers=headers
         )
 
 
@@ -133,9 +124,10 @@ def fetch_html(url: str) -> str:
 
 def extract_text_content(soup: BeautifulSoup, content_set: Set[str]) -> None:
     """본문 텍스트 콘텐츠를 추출하여 content_set에 추가합니다."""
-    for element in soup.find_all(["p", "h1", "h2", "h3", "h4", "h5", "h6", "li"]):
+    # content_set.add(soup.get_text())
+    for element in soup.find_all(["div", "p", "h1", "h2", "h3", "h4", "h5", "h6", "li"]):
         text = element.get_text(strip=True)
-        if text and len(text) > 3:  # 너무 짧은 텍스트 필터링
+        if text and len(text) >= 2:  # 너무 짧은 텍스트 필터링
             content_set.add(text)
 
 

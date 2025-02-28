@@ -16,9 +16,10 @@ def fetch_html(url: str) -> str:
 
 def extract_text_content(soup: BeautifulSoup, content_set: Set[str]) -> None:
     """본문 텍스트 콘텐츠를 추출하여 content_set에 추가합니다."""
-    for element in soup.find_all(["p", "h1", "h2", "h3", "h4", "h5", "h6", "li"]):
+    # content_set.add(soup.get_text())
+    for element in soup.find_all(["p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "div"]):
         text = element.get_text(strip=True)
-        if text and len(text) > 3:  # 너무 짧은 텍스트 필터링
+        if text and len(text) >= 2:  # 너무 짧은 텍스트 필터링
             content_set.add(text)
 
 
@@ -61,5 +62,6 @@ def extract_content_with_images(url: str) -> None:
 
 
 if __name__ == "__main__":
-    URL = "https://ourfirstletter.com/w/250405-PSYYv4"
+    # URL = "https://ourfirstletter.com/w/250405-PSYYv4"
+    URL = "https://mcard.cryucard.com/c/JjJ9DKvEsmYtOHk5VkZl"
     extract_content_with_images(URL)
