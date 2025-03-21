@@ -1,6 +1,11 @@
 import requests
 from bs4 import BeautifulSoup
 from typing import Set
+import re
+
+
+def contains_korean(text: str) -> bool:
+    return bool(re.search(r'[\uac00-\ud7a3]', text))
 
 
 def fetch_html(url: str) -> str:
@@ -17,9 +22,9 @@ def fetch_html(url: str) -> str:
 def extract_text_content(soup: BeautifulSoup, content_set: Set[str]) -> None:
     """본문 텍스트 콘텐츠를 추출하여 content_set에 추가합니다."""
     # content_set.add(soup.get_text())
-    for element in soup.find_all(["p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "div"]):
+    for element in soup.find_all(["p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "div", "script", "meta", "title"]):
         text = element.get_text(strip=True)
-        if text and len(text) >= 2:  # 너무 짧은 텍스트 필터링
+        if text and len(text) >= 2 and contains_korean(text):  # 너무 짧은 텍스트 필터링
             content_set.add(text)
 
 
@@ -49,7 +54,7 @@ def extract_content_with_images(url: str) -> None:
     soup = BeautifulSoup(html, "html.parser")
 
     # 불필요한 태그 제거
-    for tag in soup(["script", "style", "noscript", "meta", "link"]):
+    for tag in soup(["style", "noscript", "link"]):
         tag.decompose()
 
     extracted_content: Set[str] = set()
@@ -63,5 +68,8 @@ def extract_content_with_images(url: str) -> None:
 
 if __name__ == "__main__":
     # URL = "https://ourfirstletter.com/w/250405-PSYYv4"
-    URL = "https://mcard.cryucard.com/c/JjJ9DKvEsmYtOHk5VkZl"
+    # URL = "https://mcard.cryucard.com/c/JjJ9DKvEsmYtOHk5VkZl"
+    URL = "https://toourguest.com/cards/sohyeondongyeob"
+    html = fetch_html(URL)
+    # print(html)
     extract_content_with_images(URL)

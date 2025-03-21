@@ -9,17 +9,18 @@ import os, json, requests
 from datetime import datetime
 from bs4 import BeautifulSoup
 from typing import Set
+import re
 
 
 @https_fn.on_request(secrets=["OPENAI_API_KEY"])
 def test_handler(req: https_fn.Request) -> https_fn.Response:
     """테스트 데이터(JSON str)를 반환하는 API 핸들러"""
     sample_data = '''{
-        "thumbnail": "https://lh3.googleusercontent.com/0R0eXLYFAdshrgHOqXSujoVHcD7z76dBJJzpci2DLJ8cZxUtTWnYuNrFDGX8LNC8VVrpRLoCEf0_RVT4BTpBeY5GgoaRg6OHeP4ZfeWlYA=s1200",
-        "groom": "차땡땡",
-        "bride": "한땡땡",
-        "datetime": "2025-04-11T11:00:00",
-        "location": "JK아트컨벤션 4층 아트리움홀, 서울 영등포구 문래동3가 55-16"
+        "thumbnail": "https://img.freepik.com/free-vector/bride-groom-getting-married-illustration_23-2148404918.jpg?semt=ais_hybrid",
+        "groom": "김철수",
+        "bride": "이영희",
+        "datetime": "2025-05-25T11:00:00",
+        "location": "청모호텔 메인홀, 서울 강남구 일원동1가 12-34"
     }'''
 
     if req.method == "OPTIONS":
@@ -73,7 +74,7 @@ def parse_voucher_handler(req: https_fn.Request) -> https_fn.Response:
         
         query = parsed_result + "\n\n"
         query += '''
-        Extract the required wedding data from the given text and return it in pure JSON format, without any additional text. Ensure that the output follows this exact JSON structure:
+        Extract the required wedding data from the given text and return it in pure JSON format, without any additional text or snippet tags. Ensure that the output follows this exact JSON structure:
 
         {
             "thumbnail": "",
@@ -83,7 +84,9 @@ def parse_voucher_handler(req: https_fn.Request) -> https_fn.Response:
             "location": ""
         }
 
-        Do not include any explanations, comments, or extra characters—only return valid JSON.
+        Do not include any explainations, comments, or extra characters. Only return valid JSON because I want to run following scripts after your response.
+        data = response.json()
+        jdata = json.loads(data)
          '''
         client = OpenAI(api_key=OPENAI_API_KEY)
         model = "gpt-4o-mini"
@@ -112,6 +115,10 @@ def parse_voucher_handler(req: https_fn.Request) -> https_fn.Response:
         )
 
 
+def contains_korean(text: str) -> bool:
+    return bool(re.search(r'[\uac00-\ud7a3]', text))
+
+
 def fetch_html(url: str) -> str:
     """지정된 URL에서 HTML을 가져옵니다."""
     try:
@@ -125,9 +132,9 @@ def fetch_html(url: str) -> str:
 def extract_text_content(soup: BeautifulSoup, content_set: Set[str]) -> None:
     """본문 텍스트 콘텐츠를 추출하여 content_set에 추가합니다."""
     # content_set.add(soup.get_text())
-    for element in soup.find_all(["div", "p", "h1", "h2", "h3", "h4", "h5", "h6", "li"]):
+    for element in soup.find_all(["p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "div", "script", "meta", "title"]):
         text = element.get_text(strip=True)
-        if text and len(text) >= 2:  # 너무 짧은 텍스트 필터링
+        if text and len(text) >= 2 and contains_korean(text):  # 너무 짧은 텍스트 필터링
             content_set.add(text)
 
 
@@ -157,7 +164,7 @@ def extract_content_with_images(url: str) -> str:
     soup = BeautifulSoup(html, "html.parser")
 
     # 불필요한 태그 제거
-    for tag in soup(["script", "style", "noscript", "meta", "link"]):
+    for tag in soup(["style", "noscript", "link"]):
         tag.decompose()
 
     extracted_content: Set[str] = set()
