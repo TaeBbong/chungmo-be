@@ -99,7 +99,7 @@ def parse_voucher_handler(req: https_fn.Request) -> https_fn.Response:
         }]
 
         # GPT API 호출
-        response = client.chat.completions.create(model=model, messages=messages)
+        response = client.chat.completions.create(model=model, messages=messages, response_format={'type': 'json_object'})
 
         try:
             result = response.choices[0].message.content
