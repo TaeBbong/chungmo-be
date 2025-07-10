@@ -15,4 +15,5 @@ jobs:
     steps:
       - name: Curl Firebase Function
         run: |
-          curl --fail --silent --show-error --max-time 15 "$FUNCTION_URL"
+          curl --fail --silent --show-error --max-time 15 \
+            --request POST --header "Content-Length: 0" "$FUNCTION_URL"
